@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #This install just few packages at a time
 #TODO: stdin packages list
 #TODO: getopt (clean_max, at_a_time)
@@ -61,10 +62,8 @@ def clean_cache():
 if __name__ == '__main__':
 	clean=0
 	packages = parse_input(get_list())
-	print packages
 	os.system('mkdir -p /tmp/pacatatime/cache')
 	for i in range(0, len(packages), AT_A_TIME):
-		print i
 		step_pkgs = packages[i:i+AT_A_TIME - 1]
 		install(step_pkgs)
 		clean = clean + 1;
