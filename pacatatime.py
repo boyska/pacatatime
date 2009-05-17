@@ -69,14 +69,18 @@ def parse_input(input_text):
                 for x in input_text if x.strip() != ''])
     return pkgs
 
-def install(packages):
+def install(packages, skip_deps):
     '''
     Input: list of packages to install
     Installs in batch mode only if they're not up to date
     '''
     #TODO: migrate to subprocess
-    os.system('pacman -S --noconfirm --needed\
-                --cachedir /tmp/pacatatime/cache %s' % (' '.join(packages)))
+    if not skip_deps:
+        os.system('pacman -Up --noconfirm --needed\
+            --cachedir /tmp/pacatatime/cache %s' % (' '.join(packages)))
+    else:
+        os.system('pacman -Upd --noconfirm --needed\
+        --cachedir /tmp/pacatatime/cache %s' % (' '.join(packages)))
 
 def clean_cache():
     #TODO: fix. atm it doesn't work as expected
@@ -90,6 +94,8 @@ def parse_options(**default_options):
     help="how many packages will be installed at a time")
     parser.add_option("-p", "--pretend", action="store_true", dest="pretend", 
     default=False, help="only print the packages we're going to install")
+    parser.add_option("-d", "--skip-dependencies", action="store_true",
+    dest="skip_deps", default=False, help="skip dependency check")
     parser.set_defaults(**default_options)
     (options, args) = parser.parse_args()
     return options, args
@@ -100,7 +106,7 @@ def main():
     if args:
         uris = get_uris(args)
     else:
-        uris = get_uris()
+        uris = get_uris([])
     if(options.pretend): #otherwise this job is not requested!
         packages = parse_input(uris)
     
@@ -116,7 +122,7 @@ def main():
         if options.pretend:
             print ' '.join(packages[i:i+AT_A_TIME])
             continue
-        install(step_pkgs)
+        install(step_uris, options.skip_deps)
         clean_cache()
 
 
