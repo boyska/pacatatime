@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #This install just few packages at a time
-#TODO: stdin packages list
 
 import os
 import popen2
@@ -73,6 +72,8 @@ def parse_options(**default_options):
     parser = OptionParser(usage)
     parser.add_option("-t", "--at-a-time", dest="atatime",
     help="how many packages will be installed at a time")
+    parser.add_option("-p", "--pretend", action="store_true", dest="pretend", 
+    default=False, help="only print the packages we're going to install")
     parser.set_defaults(**default_options)
     (options, args) = parser.parse_args()
     return options, args
@@ -87,8 +88,15 @@ def main():
         packages = parse_input(get_list())
     os.system('mkdir -p /tmp/pacatatime/cache')
     clean = 0
+    if options.pretend:
+        print "We're installing:"
+        print ' '.join(packages)
+        print "Splitted as follows:"
     for i in range(0, len(packages), AT_A_TIME):
         step_pkgs = packages[i:i+AT_A_TIME]
+        if options.pretend:
+            print ' '.join(step_pkgs)
+            continue
         install(step_pkgs)
         clean = clean + AT_A_TIME
         if clean == CLEAN_MAX:
