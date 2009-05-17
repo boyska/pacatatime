@@ -5,13 +5,26 @@
 import os
 import popen2
 from optparse import OptionParser
+import urlparse
 
-CLEAN_MAX = 5 #how many packages we can install before cleaning cache
-
+def get_uris(args):
+    if not args:
+        cmd = "pacman -Sup"
+    else:
+        cmd = "pacman -Sp %s" % (' '.join(args))
+    output = popen2.popen2(cmd)[0]
+    uris = []
+    line=output.readline()#we need to skip first 2 lines
+    line=output.readline()
+    for line in output.readlines():
+        uris.append(line.strip())
+    return uris
+        
+    
 def get_list():
     #Output: interesting part of pacman -Qu
     output = popen2.popen2("pacman -Qu")[0]
-
+    
     try:
         while True:
             try:
@@ -37,11 +50,14 @@ def get_list():
     finally:
         output.close()
 
-def package_name(name_version):
+def package_name(url):
     #TODO: fix bug, for example shared-mime-info (regexp -(\d\.)* ?) 
+    #TODO: use pacman -Qip for this
     #Input: package-v.e.rs.i-on
     #Output: package
-    return name_version.rsplit('-', 2)[0]
+    path = urlparse.urlsplit(url).path
+    filename = os.path.split(path)[-1]
+    return filename.rsplit('.pkg.tar.gz', 2)[0]
 
 def parse_input(input_text):
     '''
@@ -50,7 +66,7 @@ def parse_input(input_text):
     '''
     pkgs = []
     pkgs.extend([package_name(x) 
-                for x in input_text.split(' ') if x.strip() != ''])
+                for x in input_text if x.strip() != ''])
     return pkgs
 
 def install(packages):
@@ -77,32 +93,32 @@ def parse_options(**default_options):
     parser.set_defaults(**default_options)
     (options, args) = parser.parse_args()
     return options, args
-    
 
 def main():
-    options, args = parse_options(atatime=3) #default options in args
+    options, args = parse_options(atatime=1) #default options in args
     AT_A_TIME = int(options.atatime)
-    if args: #packages are user-supplied
-        packages = args
+    if args:
+        uris = get_uris(args)
     else:
-        packages = parse_input(get_list())
+        uris = get_uris()
+    if(options.pretend): #otherwise this job is not requested!
+        packages = parse_input(uris)
+    
     os.system('mkdir -p /tmp/pacatatime/cache')
     clean = 0
     if options.pretend:
         print "We're installing:"
         print ' '.join(packages)
         print "Splitted as follows:"
-    for i in range(0, len(packages), AT_A_TIME):
-        step_pkgs = packages[i:i+AT_A_TIME]
+    
+    for i in range(0, len(uris), AT_A_TIME):
+        step_uris = uris[i:i+AT_A_TIME]
         if options.pretend:
-            print ' '.join(step_pkgs)
+            print ' '.join(packages[i:i+AT_A_TIME])
             continue
         install(step_pkgs)
-        clean = clean + AT_A_TIME
-        if clean == CLEAN_MAX:
-            clean_cache()
-            clean = 0
-            
+        clean_cache()
+
 
 if __name__ == '__main__':
     main()
