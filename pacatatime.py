@@ -6,6 +6,9 @@ import os
 import popen2
 from optparse import OptionParser
 import urlparse
+import re
+
+PKG_URL = re.compile('.*/(.*)-[\d.]+-\d+-\w+\.pkg\..*')
 
 def get_uris(args):
     if not args:
@@ -14,12 +17,15 @@ def get_uris(args):
         cmd = "pacman -Sp %s" % (' '.join(args))
     output = popen2.popen2(cmd)[0]
     uris = []
-    line=output.readline()#we need to skip first 2 lines
-    line=output.readline()
+    #line=output.readline()#we need to skip first 2 lines
     for line in output.readlines():
         uris.append(line.strip())
     return uris
         
+def count_dependencies(package):
+    cmd = "pacman -Sp %s" % package
+    output = popen2.popen2(cmd)[0]
+    return len(output.readlines())
     
 def get_list():
     #Output: interesting part of pacman -Qu
@@ -56,17 +62,23 @@ def package_name(url):
     #Input: package-v.e.rs.i-on
     #Output: package
     path = urlparse.urlsplit(url).path
-    filename = os.path.split(path)[-1]
-    return filename.rsplit('.pkg.tar.gz', 2)[0]
+    mat = PKG_URL.search(path)
+    if mat:
+        return mat.group(1)
+    else:
+        return None
 
-def parse_input(input_text):
+def parse_input(uri_list):
     '''
     Input: string containing all packages name+ver, as returned by pacman -Qu
     Output: a list of packages names
     '''
-    pkgs = []
-    pkgs.extend([package_name(x) 
-                for x in input_text if x.strip() != ''])
+    
+    pkgs = {} #Name->Url
+    for uri in uri_list:
+        name = package_name(uri)
+        if name:
+            pkgs[name] = uri
     return pkgs
 
 def install(packages, skip_deps):
@@ -107,23 +119,25 @@ def main():
         uris = get_uris(args)
     else:
         uris = get_uris([])
-    if(options.pretend): #otherwise this job is not requested!
-        packages = parse_input(uris)
+    packages = parse_input(uris)
     
     os.system('mkdir -p /tmp/pacatatime/cache')
     clean = 0
     if options.pretend:
         print "We're installing:"
-        print ' '.join(packages)
+        print ' '.join(packages.keys())
         print "Splitted as follows:"
-    
-    for i in range(0, len(uris), AT_A_TIME):
-        step_uris = uris[i:i+AT_A_TIME]
+    while packages:
+        pkg_list = packages.keys()
+        pkg_list.sort(key=count_dependencies)
+        step_pkgs = pkg_list[0:AT_A_TIME]
         if options.pretend:
-            print ' '.join(packages[i:i+AT_A_TIME])
-            continue
-        install(step_uris, options.skip_deps)
-        clean_cache()
+            print ' '.join(step_pkgs)
+        else:
+            install([packages[x] for x in step_pkgs], options.skip_deps)
+            clean_cache()
+        for pkg in step_pkgs:
+            del packages[pkg]
 
 
 if __name__ == '__main__':
