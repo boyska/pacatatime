@@ -8,6 +8,7 @@ from optparse import OptionParser
 import urlparse
 import re
 
+BASE_DIR = "/tmp/pacatatime/cache"
 PKG_URL = re.compile('.*/(.*)-[\d.]+-\d+-\w+\.pkg\..*')
 
 def get_uris(args):
@@ -95,9 +96,8 @@ def install(packages, skip_deps):
         --cachedir /tmp/pacatatime/cache %s' % (' '.join(packages)))
 
 def clean_cache():
-    #TODO: fix. atm it doesn't work as expected
     print "CANCELLO LA CACHE"
-    os.system('yes|pacman -Scc')
+    os.system('rm -rf %s/*' % BASE_DIR)
 
 def parse_options(**default_options):
     usage = "usage: %prog [options] [packages]..."
@@ -121,7 +121,7 @@ def main():
         uris = get_uris([])
     packages = parse_input(uris)
     
-    os.system('mkdir -p /tmp/pacatatime/cache')
+    os.system('mkdir -p %s' % BASE_DIR)
     clean = 0
     if options.pretend:
         print "We're installing:"
