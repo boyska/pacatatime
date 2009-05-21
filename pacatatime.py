@@ -26,7 +26,8 @@ def get_uris(args):
 def count_dependencies(package):
     cmd = "pacman -Sp %s" % package
     output = popen2.popen2(cmd)[0]
-    return len(output.readlines())
+    out = output.readlines()
+    return len(out)
     
 def get_list():
     #Output: interesting part of pacman -Qu
@@ -89,10 +90,10 @@ def install(packages, skip_deps):
     '''
     #TODO: migrate to subprocess
     if not skip_deps:
-        os.system('pacman -Up --noconfirm --needed\
+        os.system('pacman -S --noconfirm --needed\
             --cachedir /tmp/pacatatime/cache %s' % (' '.join(packages)))
     else:
-        os.system('pacman -Upd --noconfirm --needed\
+        os.system('pacman -Sd --noconfirm --needed\
         --cachedir /tmp/pacatatime/cache %s' % (' '.join(packages)))
 
 def clean_cache():
@@ -134,7 +135,7 @@ def main():
         if options.pretend:
             print ' '.join(step_pkgs)
         else:
-            install([packages[x] for x in step_pkgs], options.skip_deps)
+            install(step_pkgs, options.skip_deps)
             clean_cache()
         for pkg in step_pkgs:
             del packages[pkg]
