@@ -129,7 +129,7 @@ class PacGraph(object):
                     self.graph.add_edge(pkg, x)
     
     def _needed_packages(self, packages=None):
-        '''return a list of tuples (name,ver,repo) of the needed packages to install self.base_packages'''
+        '''return a list of names of the needed packages to install self.base_packages'''
         needed = []
         if packages:
             pm = Popen('pacman -Sp %s' % (' '.join(packages)), stdout=PIPE, shell=True)
@@ -170,6 +170,14 @@ class PacAtATime(object):
         '''install what is asked'''
         to_install = self.get_sequence()
         print to_install
+        for pkg in to_install:
+            if pkg in self.installing: #explicit
+                os.system('pacman -S --noconfirm --needed --asexplicit\
+                --cachedir /tmp/pacatatime/cache %s' % pkg)
+            else: #dep
+                os.system('pacman -S --noconfirm --needed --asdeps\
+                --cachedir /tmp/pacatatime/cache %s' % pkg)
+
     
     def n_packages(self):
         '''return the number of packages to be installed '''
