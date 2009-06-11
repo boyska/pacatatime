@@ -3,6 +3,7 @@
 #This install just few packages at a time
 
 import os
+import sys
 import popen2
 from optparse import OptionParser
 import urlparse
@@ -114,6 +115,10 @@ def parse_options(**default_options):
     return options, args
 
 def main():
+    if os.getuid() != 0:
+        print "pacatatime must be run as root"
+        sys.exit(1)
+    
     options, args = parse_options(atatime=1) #default options in args
     AT_A_TIME = int(options.atatime)
     if args:
