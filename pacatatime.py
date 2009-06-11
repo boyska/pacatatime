@@ -15,7 +15,7 @@ from collections import defaultdict
 DB_PATH = '/var/lib/pacman'
 BASE_DIR = "/tmp/pacatatime/cache"
 PKG_URL = re.compile(
-        '.*/(.*?)/os/.*/(.*)-([\d.]+-\d+)-\w+\.pkg\..*', re.UNICODE)
+        '.*/(.*?)/os/.*/(.*)-([\d\.]+-\d+)[-\w]*\.pkg\..*', re.UNICODE)
 
 class DiGraph(object):
     def __init__(self):
