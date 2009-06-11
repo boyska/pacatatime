@@ -307,35 +307,13 @@ def main():
     
     options, args = parse_options(atatime=1) #default options in args
     AT_A_TIME = int(options.atatime)
-    if args:
-        uris = get_uris(args)
-    else:
-        uris = get_uris([])
-    packages = parse_input(uris)
-
     installer = PacAtATime(args)
     if not options.pretend:
         installer.install()
+    else:
+        print installer.get_sequence()
 
     return 0
-    #OLD CODE (useful for PacAtATime?)
-    os.system('mkdir -p %s' % BASE_DIR)
-    if options.pretend:
-        print "We're installing:"
-        print ' '.join(packages.keys())
-        print "Splitted as follows:"
-    while packages:
-        pkg_list = packages.keys()
-        pkg_list.sort(key=count_dependencies)
-        step_pkgs = pkg_list[0:AT_A_TIME]
-        if options.pretend:
-            print ' '.join(step_pkgs)
-        else:
-            install(step_pkgs, options.skip_deps)
-            clean_cache()
-        for pkg in step_pkgs:
-            del packages[pkg]
-
 
 if __name__ == '__main__':
     main()
