@@ -17,6 +17,8 @@ PKG_URL = re.compile(
     '.*/(.*)/os/.*/(.*)-([\d.]+.\d+)', re.UNICODE)
 
 class DiGraph(object):
+    
+    '''A generic directed graph'''
     def __init__(self):
         self.nodes = set()
         self.edges = defaultdict(set) #'name': {set, of, adiacents}
@@ -77,10 +79,11 @@ class DiGraph(object):
         for name in self.nodes:
             if not self.edges[name]:
                 return name
-
         return None
 
+
 class PacGraph(object):
+    '''A pacman dependency tree handler'''
     def __init__(self, packages):
         '''
         packages is a list.
@@ -91,11 +94,11 @@ class PacGraph(object):
         self.graph = DiGraph() #an edge from a to b means "a depends on b"
         
         self._build()
-    
+        
     def get_dependencies(self, node):
         '''return adiacent nodes on the graph'''
         raise NotImplementedError
-
+        
     def pop_leaf(self):
         '''
         find a "leaf" and return a tuple (leaf,)
@@ -113,8 +116,7 @@ class PacGraph(object):
                 return  u
         
         return None
-
-
+        
     def _build(self):
         '''build the graph, returns nothing'''
         to_install = self._needed_packages(self.base_packages)#[('name','ver', 'repo'), ...]
@@ -123,7 +125,7 @@ class PacGraph(object):
             for x in self._needed_packages((pkg,)):
                 if x != pkg:
                     self.graph.add_edge(pkg, x)
-    
+                    
     def _needed_packages(self, packages=None):
         '''return a list of names of the needed packages to install self.base_packages'''
         needed = []
@@ -139,7 +141,8 @@ class PacGraph(object):
                 needed.append(name)
         return needed
                     
-        
+
+
 class PacAtATime(object):
     def __init__(self, packages):
         '''
@@ -157,7 +160,7 @@ class PacAtATime(object):
                 break
             l.append(leaf)
         return l
-
+        
     def install(self):
         '''install what is asked'''
         to_install = self.get_sequence()
@@ -168,16 +171,16 @@ class PacAtATime(object):
             else: #dep
                 os.system('pacman -S --noconfirm --needed --asdeps\
                 --cachedir /tmp/pacatatime/cache %s' % pkg)
-
+                
     
     def n_packages(self):
         '''return the number of packages to be installed '''
         raise NotImplementedError
-    
+        
     def max_packages(self):
         '''return the maximum number of packages to be installed in a single step '''
         raise NotImplementedError
-    
+        
     def size(self):
         '''return the total size of the packages to be installed'''
         raise NotImplementedError
@@ -185,10 +188,11 @@ class PacAtATime(object):
     def max_size(self):
         '''return the maximum size to be installed in a single step'''
         raise NotImplementedError
-
+        
     def _install_package(self, package_name):
         raise NotImplementedError
-    
+
+
 def clean_cache():
     print "CANCELLO LA CACHE"
     os.system('rm -rf %s/*' % BASE_DIR)
@@ -217,7 +221,7 @@ def main():
     if not options.pretend:
         installer.install()
     else:
-        print installer.get_sequence()
+        print 'To be installed:', ', '.join(installer.get_sequence())
 
     return 0
 
