@@ -4,7 +4,6 @@
 
 import os
 import sys
-import popen2
 from optparse import OptionParser
 import urlparse
 import re
