@@ -95,7 +95,7 @@ class PacGraph(object):
     def get_dependencies(self, node):
         '''return adiacent nodes on the graph'''
         raise NotImplementedError
-        
+
     def pop_leaf(self):
         '''
         find a "leaf" and return a tuple (leaf,)
@@ -111,7 +111,7 @@ class PacGraph(object):
             else: #every adiacent has been visited, it's a leaf!
                 graph.add_property('visited', u)
                 return  u
-
+        
         return None
 
 
@@ -119,8 +119,10 @@ class PacGraph(object):
         '''build the graph, returns nothing'''
         to_install = self._needed_packages(self.base_packages)#[('name','ver', 'repo'), ...]
         for pkg in to_install:
+            self.graph.add_vertex(pkg)
             for x in self._needed_packages((pkg,)):
-                self.graph.add_edge(pkg, x)
+                if x != pkg:
+                    self.graph.add_edge(pkg, x)
     
     def _needed_packages(self, packages=None):
         '''return a list of names of the needed packages to install self.base_packages'''
@@ -159,7 +161,6 @@ class PacAtATime(object):
     def install(self):
         '''install what is asked'''
         to_install = self.get_sequence()
-        print to_install
         for pkg in to_install:
             if pkg in self.installing: #explicit
                 os.system('pacman -S --noconfirm --needed --asexplicit\
