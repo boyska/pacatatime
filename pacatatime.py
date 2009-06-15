@@ -14,7 +14,7 @@ from collections import defaultdict
 DB_PATH = '/var/lib/pacman'
 BASE_DIR = "/tmp/pacatatime/cache"
 PKG_URL = re.compile(
-        '.*/(.*?)/os/.*/(.*)-([\d\.]+-\d+)[-\w]*\.pkg\..*', re.UNICODE)
+    '.*/(.*)/os/.*/(.*)-([\d.]+.\d+)', re.UNICODE)
 
 class DiGraph(object):
     def __init__(self):
@@ -80,10 +80,6 @@ class DiGraph(object):
 
         return None
 
-
-
-
-
 class PacGraph(object):
     def __init__(self, packages):
         '''
@@ -124,8 +120,7 @@ class PacGraph(object):
         to_install = self._needed_packages(self.base_packages)#[('name','ver', 'repo'), ...]
         for pkg in to_install:
             for x in self._needed_packages((pkg,)):
-                if x != pkg:
-                    self.graph.add_edge(pkg, x)
+                self.graph.add_edge(pkg, x)
     
     def _needed_packages(self, packages=None):
         '''return a list of names of the needed packages to install self.base_packages'''
@@ -134,12 +129,8 @@ class PacGraph(object):
             pm = Popen('pacman -Sp %s' % (' '.join(packages)), stdout=PIPE, shell=True)
         else:
             pm = Popen('pacman -Sup %s', stdout=PIPE, shell=True)
-        for url in pm.stdout:
-            try:
-                url = url.strip().decode()
-            except UnicodeDecodeError:
-                #it is probably an informative string, not a URL. discard it
-                continue
+        for line in pm.stdout:
+            url = line.strip().decode()
             mat = PKG_URL.search(url)
             if mat:
                 name = mat.group(2)
