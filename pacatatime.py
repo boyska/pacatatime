@@ -43,18 +43,25 @@ class DiGraph(object):
 
     def get_adiacents(self, node):
         '''return a set of adiacent nodes'''
-        return self.edges[node]
+        if node in self.edges:
+            return self.edges[node]
+        return set()
 
-    def pop_vertex(self, name):
+    def remove_vertex(self, name):
         '''removes the node and the vertex it is connected to'''
         #TODO: it should remove even the edges "pointing" to it
-        self.nodes.remove(name)
-        del self.edges[name]
+        self.nodes.discard(name)
+        for node in self.nodes:
+            adiac = self.get_adiacents(node)
+            adiac.discard(name)
+
+        if name in self.edges:
+            del self.edges[name]
 
     def remove_edge(self, node_from, node_to):
         '''removes an edge'''
         adiacents = self.get_adiacents(node_from)
-        adiacents.remove(node_to)
+        adiacents.discard(node_to)
 
     def get_labels(self, node, node_to=None):
         '''get a set of labels of the node'''
@@ -79,9 +86,9 @@ class DiGraph(object):
         Else, the label will be removed from the edge (node, node_to).
         '''
         if not node_to: #it's a vertex
-            self.vertex_labels[node].remove(label)
+            self.vertex_labels[node].discard(label)
         else:
-            self.edge_labels[(node, node_to)].remove(label)
+            self.edge_labels[(node, node_to)].discard(label)
 
     def has_label(self, label, node, node_to=None):
         '''return True if vertex/edge has that label, else False'''
@@ -134,7 +141,9 @@ class PacGraph(object):
                 if not graph.has_label('visited', neighbour):
                     break
             else: #every adiacent has been visited, it's a leaf!
-                graph.add_label('visited', node)
+                #we should do graph.add_label('visited', node)
+                #but we defer it to the "installer"!
+                #so that we can handle install error properly
                 return  node
         
         return None
@@ -145,24 +154,29 @@ class PacGraph(object):
         to_install = self._needed_packages(self.base_packages)
         for pkg in to_install:
             self.graph.add_vertex(pkg)
-            for needed in self._needed_packages((pkg,)):
-                if needed != pkg:
-                    self.graph.add_edge(pkg, needed)
+            try:
+                for needed in self._needed_packages((pkg,)):
+                    if needed != pkg:
+                        self.graph.add_edge(pkg, needed)
+            except Exception:
+                self.graph.add_label("error", pkg)
                     
     def _needed_packages(self, packages=None):
         '''return a list of needed package names'''
         needed = []
         if packages:
             process = Popen('pacman -Sp %s' % (' '.join(packages)),
-                        stdout=PIPE, shell=True)
+                        stdout=PIPE, stderr=PIPE, shell=True)
         else:
-            process = Popen('pacman -Sup %s', stdout=PIPE, shell=True)
+            process = Popen('pacman -Sup %s', stdout=PIPE, stderr=PIPE, shell=True)
         for line in process.stdout:
             url = line.strip().decode()
             mat = PKG_URL.search(url)
             if mat:
                 name = mat.group(2)
                 needed.append(name)
+        if process.stderr.readlines():
+            raise Exception
         return needed
                     
 
@@ -182,11 +196,18 @@ class PacAtATime(object):
     def get_sequence(self):
         '''Returns a valid installing sequence'''
         valid_sequence = []
+        last = []
         while True:
             leaf = self.graph.pop_leaf()
             if not leaf:
                 break
-            valid_sequence.append(leaf)
+             
+            self.graph.graph.add_label('visited', leaf)
+            if not self.graph.graph.has_label("error", leaf):
+                valid_sequence.append(leaf)
+            else:
+                last.append(leaf)
+        valid_sequence.extend(last)
         return valid_sequence
         
     def install(self):
