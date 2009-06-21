@@ -119,34 +119,32 @@ class DiGraph(object):
         return None
 
 
-class PacGraph(object):
+class PacGraph(DiGraph):
     '''A pacman dependency tree handler'''
     def __init__(self, packages):
         '''
         packages is a list.
         they'll be the only node in the graph with incoming degree = 0
         '''
+        DiGraph.__init__(self)
         self.base_packages = packages
-        
-        self.graph = DiGraph() #an edge from a to b means "a depends on b"
         
         self._build()
         
     def get_dependencies(self, node):
         '''return adiacent nodes on the graph'''
-        return self.graph.get_adiacents(node)
+        return self.get_adiacents(node)
         
     def pop_leaf(self):
         '''
         find a "leaf" and return a tuple (leaf,)
         If there isn't any leaf, return (the, smallest, cycle)
         '''
-        graph = self.graph
-        for node in graph.nodes:
-            if graph.has_label('visited', node):
+        for node in self.nodes:
+            if self.has_label('visited', node):
                 continue
-            for neighbour in graph.get_adiacents(node):
-                if not graph.has_label('visited', neighbour):
+            for neighbour in self.get_adiacents(node):
+                if not self.has_label('visited', neighbour):
                     break
             else: #every adiacent has been visited, it's a leaf!
                 #we should do graph.add_label('visited', node)
@@ -161,13 +159,13 @@ class PacGraph(object):
         #[('name','ver', 'repo'), ...]
         to_install = self._needed_packages(self.base_packages)
         for pkg in to_install:
-            self.graph.add_vertex(pkg)
+            self.add_vertex(pkg)
             try:
                 for needed in self._needed_packages((pkg,)):
                     if needed != pkg:
-                        self.graph.add_edge(pkg, needed)
+                        self.add_edge(pkg, needed)
             except Exception:
-                self.graph.add_label("error", pkg)
+                self.add_label("error", pkg)
                     
     def _needed_packages(self, packages=None):
         '''return a list of needed package names'''
@@ -211,8 +209,8 @@ class PacAtATime(object):
             if not leaf:
                 break
              
-            self.graph.graph.add_label('visited', leaf)
-            if not self.graph.graph.has_label("error", leaf):
+            self.graph.add_label('visited', leaf)
+            if not self.graph.has_label("error", leaf):
                 valid_sequence.append(leaf)
             else:
                 last.append(leaf)
