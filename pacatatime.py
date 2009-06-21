@@ -18,6 +18,15 @@ BASE_DIR = "/tmp/pacatatime/cache"
 PKG_URL = re.compile(
     '.*/(.*)/os/.*/(.*?)-(\d+\.[\w.-]+)', re.UNICODE)
 
+log = []
+
+
+class DependencyRetrievalError(Exception):
+    def __init__(self, packages):
+        self.packages = packages
+    def __str__(self):
+        return "Dependencies could not be retrieved for packages %s" %\
+            ','.join(self.packages)
 class DiGraph(object):
     
     '''A generic directed graph'''
@@ -174,8 +183,9 @@ class PacGraph(DiGraph):
                 for needed in self._needed_packages((pkg,)):
                     if needed != pkg:
                         self.add_edge(pkg, needed)
-            except Exception:
+            except DependencyRetrievalError:
                 self.add_label("error", pkg)
+                log.append("Error while retrieving dependency for %s" % pkg)
                     
     def _needed_packages(self, packages=None):
         '''return a list of needed package names'''
@@ -183,17 +193,23 @@ class PacGraph(DiGraph):
         if packages:
             process = Popen('pacman -Sp %s' % (' '.join(packages)),
                         stdout=PIPE, stderr=PIPE, shell=True)
+            process.stdout.next() #dependency resolutions...
         else:
             process = Popen('pacman -Sup %s', stdout=PIPE,
                     stderr=PIPE, shell=True)
+            process.stdout.next() #System upgrading...
+            process.stdout.next() #dependency resolutions...
+        if process.stderr.readlines():
+            raise DependencyRetrievalError, packages
+
         for line in process.stdout:
             url = line.strip().decode()
             mat = PKG_URL.search(url)
             if mat:
                 name = mat.group(2)
                 needed.append(name)
-        if process.stderr.readlines():
-            raise Exception
+            else:
+                log.append("url %s doesn't match to a package name" % url)
         return needed
                     
 
@@ -271,9 +287,11 @@ def parse_options(**default_options):
     usage = "usage: %prog [options] [packages]..."
     parser = OptionParser(usage)
     parser.add_option("-p", "--pretend", action="store_true", dest="pretend", 
-    default=False, help="only print the packages we're going to install")
+        default=False, help="only print the packages we're going to install")
     parser.add_option("-d", "--skip-dependencies", action="store_true",
-    dest="skip_deps", default=False, help="skip dependency check")
+        dest="skip_deps", default=False, help="skip dependency check")
+    parser.add_option("-v", "--verbose", action="store_true",
+        dest="verbose", default=False, help="more verbose")
     parser.set_defaults(**default_options)
     (options, args) = parser.parse_args()
     return options, args
@@ -284,12 +302,18 @@ def main():
         print "pacatatime must be run as root"
         sys.exit(1)
     
-    options, args = parse_options(atatime=1) #default options in args
+    options, args = parse_options(verbose=False) #default options in args
     installer = PacAtATime(args)
     if not options.pretend:
         installer.install()
     else:
         print 'To be installed:', ', '.join(installer.get_sequence())
+
+    if options.verbose:
+        if log:
+            print "SOME ERRORS ENCOUNTERED:"
+        for line in log:
+            print line
 
     return 0
 
