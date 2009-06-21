@@ -111,6 +111,16 @@ class DiGraph(object):
             node_from, node_to = edge
             self.remove_label(label, node_from, node_to)
 
+    def print_as_tree(self):
+        for vertex in self.nodes:
+            self.print_subtree(vertex, 0)
+    def print_subtree(self, vertex, indent):
+        if "_tree_visited" in self.get_labels(vertex):
+            return
+        self.add_label("_tree_visited", vertex)
+        print '-'*indent + vertex
+        for adiac in self.get_adiacents(vertex):
+            self.print_subtree(adiac, indent+1)
     def get_one_leaf(self):
         '''return a vertex with outgoing degree = 0, or None'''
         for name in self.nodes:
@@ -199,6 +209,8 @@ class PacAtATime(object):
         '''
         self.installing = packages
         self.graph = PacGraph(self.installing)
+
+        #self.graph.print_as_tree()
     
     def get_sequence(self):
         '''Returns a valid installing sequence'''
