@@ -49,7 +49,6 @@ class DiGraph(object):
 
     def remove_vertex(self, name):
         '''removes the node and the vertex it is connected to'''
-        #TODO: it should remove even the edges "pointing" to it
         self.nodes.discard(name)
         for node in self.nodes:
             adiac = self.get_adiacents(node)
@@ -102,6 +101,15 @@ class DiGraph(object):
                 return True
             else:
                 return False
+
+    def clear_label(self, label):
+        '''Remove the label for each node and vertex'''
+        for vertex in self.nodes:
+            self.remove_label(label, vertex)
+
+        for edge in self.edges:
+            node_from, node_to = edge
+            self.remove_label(label, node_from, node_to)
 
     def get_one_leaf(self):
         '''return a vertex with outgoing degree = 0, or None'''
@@ -168,7 +176,8 @@ class PacGraph(object):
             process = Popen('pacman -Sp %s' % (' '.join(packages)),
                         stdout=PIPE, stderr=PIPE, shell=True)
         else:
-            process = Popen('pacman -Sup %s', stdout=PIPE, stderr=PIPE, shell=True)
+            process = Popen('pacman -Sup %s', stdout=PIPE,
+                    stderr=PIPE, shell=True)
         for line in process.stdout:
             url = line.strip().decode()
             mat = PKG_URL.search(url)
