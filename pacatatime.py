@@ -7,19 +7,35 @@ It's especially useful for computers with few disk space'''
 
 import os
 import sys
+
 from optparse import OptionParser
 import re
-from subprocess import Popen, PIPE
-
 from collections import defaultdict
+
+import logging
+from subprocess import Popen, PIPE
+import os.path
+
 
 DB_PATH = '/var/lib/pacman'
 BASE_DIR = "/tmp/pacatatime/cache"
 PKG_URL = re.compile(
         '.*/(.*)/os/.*?/(.*)-.*?.pkg.tar.gz', re.UNICODE) #repo, pkg_name+ver
 
-log = []
 
+logger = logging.getLogger('pacatatime')
+#logging to file
+file_handler = logging.FileHandler(os.path.expanduser('~/.pacatatime.log'), mode='w')
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+file_handler.setFormatter(formatter)
+file_handler.setLevel(logging.DEBUG)
+logger.addHandler(file_handler)
+#logging to stderr
+console_handler = logging.StreamHandler(sys.stderr)
+formatter = logging.Formatter('%(message)s')
+console_handler.setFormatter(formatter)
+console_handler.setLevel(logging.INFO)
+logger.addHandler(console_handler)
 
 class DependencyRetrievalError(Exception):
     def __init__(self, packages):
@@ -185,7 +201,7 @@ class PacGraph(DiGraph):
                         self.add_edge(pkg, needed)
             except DependencyRetrievalError:
                 self.add_label("error", pkg)
-                log.append("Error while retrieving dependency for %s" % pkg)
+                logger.warning("Error while retrieving dependencies for %s" % pkg)
                     
     def _needed_packages(self, packages=None):
         '''return a list of needed package names'''
@@ -211,7 +227,7 @@ class PacGraph(DiGraph):
                 name = get_name_from_db(repo, name_ver)
                 needed.append(name)
             else:
-                log.append("url %s doesn't match to a package name" % url)
+                logger.warning("url %s doesn't match to a package name" % url)
         return needed
                     
 
@@ -325,12 +341,6 @@ def main():
         installer.install()
     else:
         print 'To be installed:', ', '.join(installer.get_sequence())
-
-    if options.verbose:
-        if log:
-            print "SOME ERRORS ENCOUNTERED:"
-        for line in log:
-            print line
 
     return 0
 
