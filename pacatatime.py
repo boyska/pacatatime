@@ -24,18 +24,6 @@ PKG_URL = re.compile(
 
 
 logger = logging.getLogger('pacatatime')
-#logging to file
-file_handler = logging.FileHandler(os.path.expanduser('~/.pacatatime.log'), mode='w')
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-file_handler.setFormatter(formatter)
-file_handler.setLevel(logging.DEBUG)
-logger.addHandler(file_handler)
-#logging to stderr
-console_handler = logging.StreamHandler(sys.stderr)
-formatter = logging.Formatter('%(message)s')
-console_handler.setFormatter(formatter)
-console_handler.setLevel(logging.INFO)
-logger.addHandler(console_handler)
 
 class DependencyRetrievalError(Exception):
     def __init__(self, packages):
@@ -329,6 +317,21 @@ def parse_options(**default_options):
     (options, args) = parser.parse_args()
     return options, args
 
+def _logging_init(verbose=0):
+    #logging to file
+    file_handler = logging.FileHandler(os.path.expanduser('~/.pacatatime.log'), mode='w')
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.DEBUG)
+    logger.addHandler(file_handler)
+    if verbose:
+        #logging to stderr
+        console_handler = logging.StreamHandler(sys.stderr)
+        formatter = logging.Formatter('%(message)s')
+        console_handler.setFormatter(formatter)
+        console_handler.setLevel(logging.INFO)
+        logger.addHandler(console_handler)
+
 def main():
     '''main program'''
     if os.getuid() != 0:
@@ -336,6 +339,7 @@ def main():
         sys.exit(1)
     
     options, args = parse_options(verbose=False) #default options in args
+    _logging_init(options.verbose)
     installer = PacAtATime(args)
     if not options.pretend:
         installer.install()
