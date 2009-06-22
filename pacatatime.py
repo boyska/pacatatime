@@ -272,12 +272,12 @@ class PacAtATime(object):
         valid_sequence.extend(last)
         return valid_sequence
         
-    def install(self):
+    def install(self, interactive=False):
         '''install what is asked'''
         to_install = self.get_sequence()
         for pkg in to_install:
             try:
-                self._install_package(pkg, pkg in self.installing)
+                self._install_package(pkg, pkg in self.installing, interactive)
             except StopInstallException:
                 logger.info("the user aborted the installation")
                 return -1
@@ -294,7 +294,7 @@ class PacAtATime(object):
         '''return the maximum size to be installed in a single step'''
         raise NotImplementedError
         
-    def _install_package(self, package_name, explicit):
+    def _install_package(self, package_name, explicit, interactive):
         '''actually installs a package (do the process stuff)'''
         #check how many packages we are installing
         process = Popen('pacman -Sp %s' % package_name,
@@ -303,15 +303,18 @@ class PacAtATime(object):
         howmany = len(tuple(process.stdout))
 
         if howmany != 1:
-            print 'WARNING! PacAtATime is trying to install'\
-                    '%d packages in a single step\n'\
-                    'it shouldn\'t be possible to do better, but if you think'\
-                    'you can do so, say N to exit and install "by hand"' % howmany
+            if interactive:
+                print 'WARNING! PacAtATime is trying to install'\
+                        '%d packages in a single step\n'\
+                        'it shouldn\'t be possible to do better, but if you think'\
+                        'you can do so, say N to exit and install "by hand"' % howmany
 
-            print 'Do you want to install %d packages in a single step? [Y/n]' % howmany,
-            input = raw_input()
-            if input == 'n':
-                raise StopInstallException
+                print 'Do you want to install %d packages in a single step? [Y/n]' % howmany,
+                input = raw_input()
+                if input == 'n':
+                    raise StopInstallException
+            else: #batch
+                logger.info('Installing %s and %d packages in a single step' % (package_name, howmany-1))
 
 
         if explicit:
@@ -334,7 +337,7 @@ def parse_options(**default_options):
     '''
     usage = "usage: %prog [options] [packages]..."
     parser = OptionParser(usage)
-    parser.add_option("-p", "--pretend", action="store_true", dest="pretend", 
+    parser.add_option("-p", "--pretend", action="store_true", dest="pretend",
         default=False, help="only print the packages we're going to install")
     parser.add_option("-d", "--skip-dependencies", action="store_true",
         dest="skip_deps", default=False, help="skip dependency check")
@@ -342,6 +345,10 @@ def parse_options(**default_options):
         dest="verbose", default=False, help="more verbose")
     parser.add_option("-t", "--show-tree", action="store_true",
         dest="show_tree", default=False, help="show dependency tree")
+    parser.add_option("-i", "--interactive", action="store_true",
+        dest="interactive", default=True, help="ask for action [default]")
+    parser.add_option("-b", "--batch", action="store_false",
+        dest="interactive", default=True, help="never ask for action")
     parser.set_defaults(**default_options)
     (options, args) = parser.parse_args()
     return options, args
@@ -375,7 +382,7 @@ def main():
         installer.graph.print_as_tree()
         sys.exit()
     if not options.pretend:
-        installer.install()
+        installer.install(options.interactive)
     else:
         print 'To be installed:', ', '.join(installer.get_sequence())
 
