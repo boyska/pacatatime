@@ -245,6 +245,7 @@ class PacAtATime(object):
     '''The TRUE PacAtATime working object.
     It represents all the capabilities of the software.
     '''
+    CACHE_DIR = '/tmp/pacatatime/cache'
     def __init__(self, packages):
         '''
         packages is the list of the packages to be installed.
@@ -252,8 +253,6 @@ class PacAtATime(object):
         '''
         self.installing = packages
         self.graph = PacGraph(self.installing)
-
-        #self.graph.print_as_tree()
     
     def get_sequence(self):
         '''Returns a valid installing sequence'''
@@ -281,19 +280,8 @@ class PacAtATime(object):
             except StopInstallException:
                 logger.info("the user aborted the installation")
                 return -1
+            self._clean_cache()
     
-    def n_packages(self):
-        '''return the number of packages to be installed '''
-        raise NotImplementedError
-        
-    def size(self):
-        '''return the total size of the packages to be installed'''
-        raise NotImplementedError
-        
-    def max_size(self):
-        '''return the maximum size to be installed in a single step'''
-        raise NotImplementedError
-        
     def _install_package(self, package_name, explicit, interactive):
         '''actually installs a package (do the process stuff)'''
         #check how many packages we are installing
@@ -316,19 +304,21 @@ class PacAtATime(object):
             else: #batch
                 logger.info('Installing %s and %d packages in a single step' % (package_name, howmany-1))
 
-
         if explicit:
-            os.system('pacman -S --noconfirm --needed --asexplicit\
-            --cachedir /tmp/pacatatime/cache %s' % package_name)
+            os.system('pacman -S --noconfirm --needed --asexplicit '\
+            '--cachedir %s %s' % (self.CACHE_DIR, package_name))
         else: #dep
-            os.system('pacman -S --noconfirm --needed --asdeps\
-            --cachedir /tmp/pacatatime/cache %s' % package_name)
+            os.system('pacman -S --noconfirm --needed --asdeps '\
+            '--cachedir %s %s' % (self.CACHE_DIR, package_name))
+
+    def _clean_cache(self):
+        for (dirpath, dirs, files) in os.walk(self.CACHE_DIR):
+            for file in files:
+                os.remove(os.path.join(dirpath, file))
+            for dir in dirs:
+                os.rmdir(os.path.join(dirpath, dir))
 
 
-def clean_cache():
-    '''removes everything from cache'''
-    print "CANCELLO LA CACHE"
-    os.system('rm -rf %s/*' % BASE_DIR)
 
 def parse_options(**default_options):
     '''returns a tuple (options, args).
