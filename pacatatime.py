@@ -313,6 +313,8 @@ def parse_options(**default_options):
         dest="skip_deps", default=False, help="skip dependency check")
     parser.add_option("-v", "--verbose", action="store_true",
         dest="verbose", default=False, help="more verbose")
+    parser.add_option("-t", "--show-tree", action="store_true",
+        dest="show_tree", default=False, help="show dependency tree")
     parser.set_defaults(**default_options)
     (options, args) = parser.parse_args()
     return options, args
@@ -341,12 +343,15 @@ def main():
     options, args = parse_options(verbose=False) #default options in args
     _logging_init(options.verbose)
     installer = PacAtATime(args)
+    if options.show_tree:
+        installer.graph.print_as_tree()
+        sys.exit()
     if not options.pretend:
         installer.install()
     else:
         print 'To be installed:', ', '.join(installer.get_sequence())
 
-    return 0
+    sys.exit()
 
 if __name__ == '__main__':
     main()
