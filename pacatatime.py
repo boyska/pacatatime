@@ -16,7 +16,7 @@ from collections import defaultdict
 DB_PATH = '/var/lib/pacman'
 BASE_DIR = "/tmp/pacatatime/cache"
 PKG_URL = re.compile(
-    '.*/(.*)/os/.*/(.*?)-(\d+\.[\w.-]+)', re.UNICODE)
+        '.*/(.*)/os/.*?/(.*)-.*?.pkg.tar.gz', re.UNICODE) #repo, pkg_name+ver
 
 log = []
 
@@ -206,12 +206,29 @@ class PacGraph(DiGraph):
             url = line.strip().decode()
             mat = PKG_URL.search(url)
             if mat:
-                name = mat.group(2)
+                name_ver = mat.group(2)
+                repo = mat.group(1)
+                name = get_name_from_db(repo, name_ver)
                 needed.append(name)
             else:
                 log.append("url %s doesn't match to a package name" % url)
         return needed
                     
+
+def get_name_from_db(repo, name_ver):
+    '''reads the appropriate file in the db, return the name of the package'''
+    f = open('/var/lib/pacman/sync/%s/%s/desc' % (repo, name_ver), 'r')
+    rightline = False
+    for line in f:
+        if rightline:
+            f.close()
+            return line.strip()
+        if line == '%NAME%\n':
+            rightline = True
+
+    f.close()
+    return None
+
 
 
 class PacAtATime(object):
