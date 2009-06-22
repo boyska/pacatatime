@@ -1,7 +1,7 @@
+#!/usr/bin/env python
 '''A wrapper on pacman that will install packages/upgrade your system
 one package at a time.
 It's especially useful for computers with few disk space'''
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #This install just few packages at a time
 
