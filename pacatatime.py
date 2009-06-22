@@ -25,6 +25,12 @@ PKG_URL = re.compile(
 
 logger = logging.getLogger('pacatatime')
 
+class StopInstallException(Exception):
+    def __init__(self):
+        pass
+    def __str__(self):
+        return "User stopped install process"
+
 class DependencyRetrievalError(Exception):
     def __init__(self, packages):
         self.packages = packages
@@ -270,13 +276,11 @@ class PacAtATime(object):
         '''install what is asked'''
         to_install = self.get_sequence()
         for pkg in to_install:
-            if pkg in self.installing: #explicit
-                os.system('pacman -S --noconfirm --needed --asexplicit\
-                --cachedir /tmp/pacatatime/cache %s' % pkg)
-            else: #dep
-                os.system('pacman -S --noconfirm --needed --asdeps\
-                --cachedir /tmp/pacatatime/cache %s' % pkg)
-                
+            try:
+                self._install_package(pkg, pkg in self.installing)
+            except StopInstallException:
+                logger.info("the user aborted the installation")
+                return -1
     
     def n_packages(self):
         '''return the number of packages to be installed '''
@@ -290,9 +294,32 @@ class PacAtATime(object):
         '''return the maximum size to be installed in a single step'''
         raise NotImplementedError
         
-    def _install_package(self, package_name):
+    def _install_package(self, package_name, explicit):
         '''actually installs a package (do the process stuff)'''
-        raise NotImplementedError
+        #check how many packages we are installing
+        process = Popen('pacman -Sp %s' % package_name,
+                    stdout=PIPE, stderr=PIPE, shell=True)
+        process.stdout.next() #dependency resolutions...
+        howmany = len(tuple(process.stdout))
+
+        if howmany != 1:
+            print 'WARNING! PacAtATime is trying to install'\
+                    '%d packages in a single step\n'\
+                    'it shouldn\'t be possible to do better, but if you think'\
+                    'you can do so, say N to exit and install "by hand"' % howmany
+
+            print 'Do you want to install %d packages in a single step? [Y/n]' % howmany,
+            input = raw_input()
+            if input == 'n':
+                raise StopInstallException
+
+
+        if explicit:
+            os.system('pacman -S --noconfirm --needed --asexplicit\
+            --cachedir /tmp/pacatatime/cache %s' % package_name)
+        else: #dep
+            os.system('pacman -S --noconfirm --needed --asdeps\
+            --cachedir /tmp/pacatatime/cache %s' % package_name)
 
 
 def clean_cache():
@@ -333,6 +360,7 @@ def _logging_init(verbose=0):
         console_handler.setFormatter(formatter)
         console_handler.setLevel(logging.INFO)
         logger.addHandler(console_handler)
+    logger.setLevel(logging.INFO)
 
 def main():
     '''main program'''
