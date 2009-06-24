@@ -201,11 +201,11 @@ class PacGraph(DiGraph):
         '''return a list of needed package names'''
         needed = []
         if packages:
-            process = Popen('pacman -Sp %s' % (' '.join(packages)),
+            process = Popen('pacman -Sp --noconfirm %s' % (' '.join(packages)),
                         stdout=PIPE, stderr=PIPE, shell=True)
             process.stdout.next() #dependency resolutions...
         else:
-            process = Popen('pacman -Sup %s', stdout=PIPE,
+            process = Popen('pacman -Sup --noconfirm %s', stdout=PIPE,
                     stderr=PIPE, shell=True)
             process.stdout.next() #System upgrading...
             process.stdout.next() #dependency resolutions...
@@ -285,7 +285,7 @@ class PacAtATime(object):
     def _install_package(self, package_name, explicit, interactive):
         '''actually installs a package (do the process stuff)'''
         #check how many packages we are installing
-        process = Popen('pacman -Sp %s' % package_name,
+        process = Popen('pacman -Sp --noconfirm %s' % package_name,
                     stdout=PIPE, stderr=PIPE, shell=True)
         process.stdout.next() #dependency resolutions...
         howmany = len(tuple(process.stdout))
