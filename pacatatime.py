@@ -9,6 +9,7 @@ import os
 import sys
 
 from optparse import OptionParser
+import urlparse
 import re
 from collections import defaultdict
 
@@ -225,6 +226,50 @@ class PacGraph(DiGraph):
         return needed
                     
 
+class memoized(object):
+    """Decorator that caches a function's return value each time it is called.
+    If called later with the same arguments, the cached value is returned, and
+    not re-evaluated.
+    """
+    def __init__(self, index_from=0, index_to=None):
+        self.cache = {}
+
+        self.index_from = index_from
+        self.index_to = index_to
+        self.func = None
+    def memoize_func(self, *args):
+        try:
+            return self.cache[args[self.index_from:self.index_to]]
+        except KeyError:
+            self.cache[args[self.index_from:self.index_to]] = value = self.func(*args)
+            return value
+        except TypeError:
+            # uncachable -- for instance, passing a list as an argument.
+            # Better to not cache than to blow up entirely.
+            return self.func(*args)
+    def __call__(self, *args):
+        if not self.func:
+            self.func = args[0]
+            return self
+        else:
+            return self.memoize_func(*args)
+   
+    def __repr__(self):
+        """Return the function's docstring."""
+        return self.func.__doc__
+
+
+@memoized(0,0) #memoize only on urlbase!
+def get_repo(urlbase, pkg_name_ver):
+    '''receives a base-url, returns the name of the repo'''
+    db_path = '/var/lib/pacman/sync/'
+    for file in os.listdir(db_path):
+        if not os.path.isdir(file):
+            continue
+        if os.path.exists(os.path.join(db_path, file, pkg_name_ver)):
+            return file
+
+@memoized()
 def get_name_from_db(repo, name_ver):
     '''reads the appropriate file in the db, return the name of the package'''
     f = open('/var/lib/pacman/sync/%s/%s/desc' % (repo, name_ver), 'r')
