@@ -22,6 +22,7 @@ DB_PATH = '/var/lib/pacman'
 BASE_DIR = "/tmp/pacatatime/cache"
 PKG_URL = re.compile(
         '.*/(.*)/os/.*?/(.*)-.*?.pkg.tar.gz', re.UNICODE) #repo, pkg_name+ver
+PKG_FILENAME = re.compile('(.*)(-.*).pkg.tar.gz', re.UNICODE)
 
 
 logger = logging.getLogger('pacatatime')
@@ -214,15 +215,17 @@ class PacGraph(DiGraph):
             raise DependencyRetrievalError, packages
 
         for line in process.stdout:
-            url = line.strip().decode()
-            mat = PKG_URL.search(url)
-            if mat:
-                name_ver = mat.group(2)
-                repo = mat.group(1)
+            urlbase = os.path.dirname(line)
+            pkg_filename = os.path.basename(line)
+            match = PKG_FILENAME.search(pkg_filename)
+            if match and urlbase:
+                name_ver = match.group(1)
+                repo = get_repo(urlbase, name_ver)
                 name = get_name_from_db(repo, name_ver)
                 needed.append(name)
             else:
-                logger.warning("url %s doesn't match to a package name" % url)
+                logger.warning("url %s doesn't match to a package name" % line.strip().decode())
+            continue
         return needed
                     
 
@@ -259,15 +262,16 @@ class memoized(object):
         return self.func.__doc__
 
 
-@memoized(0,0) #memoize only on urlbase!
+@memoized(0,1) #memoize only on urlbase!
 def get_repo(urlbase, pkg_name_ver):
     '''receives a base-url, returns the name of the repo'''
     db_path = '/var/lib/pacman/sync/'
-    for file in os.listdir(db_path):
-        if not os.path.isdir(file):
-            continue
-        if os.path.exists(os.path.join(db_path, file, pkg_name_ver)):
-            return file
+    for repo in os.listdir(db_path):
+        if os.path.isdir(os.path.join(db_path, repo)):
+            trying_path = os.path.join(db_path, repo, pkg_name_ver)
+            if os.path.exists(trying_path):
+                return repo
+    raise Exception, "repo not found"
 
 @memoized()
 def get_name_from_db(repo, name_ver):
