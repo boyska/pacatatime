@@ -20,9 +20,9 @@ import os.path
 
 DB_PATH = '/var/lib/pacman'
 BASE_DIR = "/tmp/pacatatime/cache"
-PKG_URL = re.compile(
-        '.*/(.*)/os/.*?/(.*)-.*?.pkg.tar.gz', re.UNICODE) #repo, pkg_name+ver
-PKG_FILENAME = re.compile('(.*)(-.*).pkg.tar.gz', re.UNICODE)
+#PKG_URL = re.compile(
+#        '.*/(.*)/os/.*?/(.*)-.*?.pkg.tar.gz', re.UNICODE) #repo, pkg_name+ver
+PKG_FILENAME = re.compile('(.*?)(-[A-z0-9]{3,}?)?\.pkg\..*', re.UNICODE)
 
 
 logger = logging.getLogger('pacatatime')
@@ -271,7 +271,7 @@ def get_repo(urlbase, pkg_name_ver):
             trying_path = os.path.join(db_path, repo, pkg_name_ver)
             if os.path.exists(trying_path):
                 return repo
-    raise Exception, "repo not found"
+    raise Exception, "%s not found in repos!" % (pkg_name_ver)
 
 @memoized()
 def get_name_from_db(repo, name_ver):
