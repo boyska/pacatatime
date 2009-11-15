@@ -17,12 +17,12 @@ import logging
 from subprocess import Popen, PIPE
 import os.path
 
-
 DB_PATH = '/var/lib/pacman'
 BASE_DIR = "/tmp/pacatatime/cache"
 #PKG_URL = re.compile(
 #        '.*/(.*)/os/.*?/(.*)-.*?.pkg.tar.gz', re.UNICODE) #repo, pkg_name+ver
 PKG_FILENAME = re.compile('(.*?)(-[A-z0-9]{3,}?)?\.pkg\..*', re.UNICODE)
+PKG_FILEALL = re.compile(r'(.*?)\.pkg\..*', re.UNICODE)
 
 
 logger = logging.getLogger('pacatatime')
@@ -218,10 +218,13 @@ class PacGraph(DiGraph):
             urlbase = os.path.dirname(line)
             pkg_filename = os.path.basename(line)
             match = PKG_FILENAME.search(pkg_filename)
+            matchall = PKG_FILEALL.search(pkg_filename)
             if match and urlbase:
                 name_ver = match.group(1)
+                fullname = matchall.group(1)
                 repo = get_repo(urlbase, name_ver)
-                name = get_name_from_db(repo, name_ver)
+                #name = get_name_from_db(repo, name_ver)
+                name = get_name_from_db2(repo, fullname, pkg_filename)
                 needed.append(name)
             else:
                 logger.warning("url %s doesn't match to a package name" % line.strip().decode())
@@ -273,20 +276,49 @@ def get_repo(urlbase, pkg_name_ver):
                 return repo
     raise Exception, "%s not found in repos!" % (pkg_name_ver)
 
+def desc_file_field(path, field):
+    '''get a specific field from a 'desc' file'''
+    with open(path, 'r') as f:
+        lines = f.readlines()
+        right = False
+        for line in lines:
+            if right:
+                return line.strip()
+            if line.strip() == field:
+                right = True
+    print 'no desc on', path
+    return None
+
+@memoized()
+def get_name_from_db2(repo, name_ver, pkgname):
+    '''
+    search in an exaustive way for every 'desc' in repo dir for one that has
+    the correct %FILENAME% field.
+    Note: this is SLOW
+    '''
+    pkgname = pkgname.strip()
+    name_begin = name_ver.split('-')[0].strip()
+    #eurhistics: try first with dirs that begin the same way than name_ver
+    for root, dirs, files in os.walk('/var/lib/pacman/sync/%s' % repo):
+        base = os.path.split(root)[-1].strip()
+        if 'desc' in files and base.startswith(name_begin):
+            filepath = os.path.join(root, 'desc')
+            if desc_file_field(filepath, '%FILENAME%') == pkgname:
+                return desc_file_field(filepath, '%NAME%')
+    print 'debug: the eurhistic hasnt worked on %s (%s)' % (name_ver, name_begin)
+    for root, dirs, files in os.walk('/var/lib/pacman/sync/%s' % repo):
+        if 'desc' in files:
+            filepath = os.path.join(root, 'desc')
+            if desc_file_field(filepath, '%FILENAME%') == pkgname:
+                return desc_file_field(filepath, '%NAME%')
+    print 'warning: errors on %s' % name_ver
+    return name_ver
+
 @memoized()
 def get_name_from_db(repo, name_ver):
     '''reads the appropriate file in the db, return the name of the package'''
-    f = open('/var/lib/pacman/sync/%s/%s/desc' % (repo, name_ver), 'r')
-    rightline = False
-    for line in f:
-        if rightline:
-            f.close()
-            return line.strip()
-        if line == '%NAME%\n':
-            rightline = True
-
-    f.close()
-    return None
+    f = '/var/lib/pacman/sync/%s/%s/desc' % (repo, name_ver)
+    return desc_file_field(f, '%NAME%')
 
 
 
